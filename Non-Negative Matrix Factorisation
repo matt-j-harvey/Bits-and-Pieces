@@ -1,0 +1,155 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+
+
+def create_random_array(rows,columns):
+    random_array = []
+
+    for row in range(rows):
+        random_array.append([])
+        for column in range(columns):
+            random_array[row].append(random.uniform(0,0.1))
+
+    random_array = np.array(random_array)
+    return random_array
+
+def create_empty_array(rows,columns):
+    new_array = []
+    for row in range(rows):
+        new_array.append([])
+        for column in range(columns):
+            new_array[row].append([])
+    return new_array
+
+
+def predict_matrix(features_matrix,weights_matrix):
+
+    predicted_matrix = []
+
+    number_of_features, original_number_of_columns = np.shape(features_matrix)
+    original_number_of_rows, number_of_features = np.shape(weights_matrix)
+
+
+    for row in range(original_number_of_rows):
+        predicted_matrix.append([])
+
+        for column in range(original_number_of_columns):
+            prediction = np.dot(weights_matrix[row],features_matrix[:,column])
+            predicted_matrix[row].append(prediction)
+
+    predicted_matrix = np.array(predicted_matrix)
+    return predicted_matrix
+
+
+def gradient_descent(predicted_matrix,original_matrix,features_matrix,weights_matrix):
+
+    errors = []
+    rows, columns = np.shape(predicted_matrix)
+    feature_derivatives = create_empty_array(number_of_features, columns)
+    weight_derivatives  = create_empty_array(rows, number_of_features)
+
+    for row in range(rows):
+        for column in range(columns):
+
+            actual_value = original_matrix[row][column]
+            predicted_value = predicted_matrix[row][column]
+
+            if actual_value == 0:
+                error = 0
+            else:
+                error = actual_value - predicted_value
+
+            errors.append(error**2)
+
+            #Calculate Feature Derivatives
+            for feature_index in range(number_of_features):
+                derivative = -2 * error * weights_matrix[row][feature_index]
+                feature_derivatives[feature_index][column].append(derivative)
+
+            #Calculate Weight Derivaties
+            for weight_index in range(number_of_features):
+                derivative = -2 * error * features_matrix[weight_index][column]
+                weight_derivatives[row][weight_index].append(derivative)
+
+    sum_of_squared_errors = np.sum(errors)
+
+    return feature_derivatives, weight_derivatives, sum_of_squared_errors
+
+def update_matricies(features_matrix,feature_derivatives,weights_matrix,weight_derivatives, learning_rate):
+
+    #Update Features Matrix
+    rows, columns = np.shape(features_matrix)
+
+    for row in range(rows):
+        for column in range(columns):
+            derviative = np.sum(feature_derivatives[row][column])
+            old_value = features_matrix[row][column]
+            new_value = old_value -(derviative * learning_rate)
+            features_matrix[row][column] = new_value
+
+    #Update Weights Matrix
+    rows, columns = np.shape(weights_matrix)
+
+    for row in range(rows):
+        for column in range(columns):
+            derviative = np.sum(weight_derivatives[row][column])
+            old_value = weights_matrix[row][column]
+            new_value = old_value - (derviative * learning_rate)
+            weights_matrix[row][column] = new_value
+
+    return features_matrix, weights_matrix
+
+
+
+"""
+for x in range(1000):
+    predicted_matrix = predict_matrix(features_matrix,weights_matrix)
+    feature_derivatives, weight_derivatives, sum_of_sqaured_errors = gradient_descent(predicted_matrix,original_matrix,features_matrix,weights_matrix)
+    features_matrix, weights_matrix = update_matricies(features_matrix,feature_derivatives,weights_matrix,weight_derivatives)
+
+    #print features_matrix
+
+
+print "Predicted Matrix", predicted_matrix
+print "Features", features_matrix
+print "Weights", weights_matrix
+
+
+plt.plot(sum_of_squared_errors)
+plt.show()
+"""
+
+def perform_matrix_factorisation(error_threshold, original_matrix, learning_rate, number_of_features):
+
+    rows, columns = np.shape(original_matrix)
+    features_matrix = create_random_array(number_of_features, columns)
+    weights_matrix = create_random_array(rows, number_of_features)
+
+    sum_of_squared_errors = 99999
+    error_list = []
+
+    while sum_of_squared_errors > error_threshold:
+        predicted_matrix = predict_matrix(features_matrix, weights_matrix)
+        feature_derivatives, weight_derivatives, sum_of_squared_errors = gradient_descent(predicted_matrix,original_matrix,features_matrix,weights_matrix)
+        features_matrix, weights_matrix = update_matricies(features_matrix, feature_derivatives, weights_matrix, weight_derivatives, learning_rate)
+        error_list.append(sum_of_squared_errors)
+
+    return features_matrix, weights_matrix, error_list
+
+original_matrix = [
+    #M1   M2   M3
+    [5.0, 2.0, 0.0], #P1
+    [3.0, 4.0, 2.0], #P2
+    [0.0, 0.0, 3.0]  #P3
+
+]
+original_matrix = np.array(original_matrix)
+number_of_features = 2
+learning_rate = 0.01
+
+features_matrix, weights_matrix, error_list = perform_matrix_factorisation(0.00001, original_matrix, learning_rate, number_of_features)
+print "prediction: ", predict_matrix(features_matrix, weights_matrix)
+print "Number of iterations", len(error_list)
+plt.plot(error_list)
+plt.show()
