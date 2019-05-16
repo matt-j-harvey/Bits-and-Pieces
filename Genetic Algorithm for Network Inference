@@ -1,0 +1,330 @@
+from PyQt4.QtGui import *
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from scipy import stats
+import random
+
+
+#Parameters
+activation_threshold = 0.99
+number_of_ensembles = 30
+weight_max = 1
+weight_min = -1
+intrinsic_activity_max = 1
+intrinsic_activity_min = 0.1
+#decay_constant = 0.2
+threshold = 5
+noise_max = 0.5
+ensemble_elipses = []
+
+
+#Admin Functions
+def list_of_strings_to_list_of_floats(original_list):
+    new_list = []
+    for item in original_list:
+        new_item = float(item)
+        new_list.append(new_item)
+
+    return new_list
+
+def show_raster_plot(binary_matrix):
+    plt.imshow(binary_matrix, aspect=0.5)
+    plt.set_cmap("plasma")
+    plt.show()
+
+def create_zero_array(size):
+    new_array = create_empty_list(size)
+
+    for row in range(size):
+        columns = create_zero_list(size)
+        new_array[row] = columns
+
+    new_array = np.array(new_array)
+    return new_array
+
+def get_boolean_with_probability(probability):
+    number_1 = random.uniform(0,1)
+
+    if probability == 0:
+        return False
+
+    if probability == 1:
+        return True
+
+    if probability > number_1:
+        return True
+    else:
+        return False
+
+def create_empty_list(size):
+    new_list = []
+    for number in range(size):
+        new_list.append([])
+
+    return new_list
+
+def create_empty_array(size):
+    new_array = create_empty_list(size)
+
+    for row in range(size):
+        columns = create_empty_list(size)
+        new_array[row] = columns
+
+    return new_array
+
+def create_zero_list(size):
+    new_list = []
+    for number in range(size):
+        new_list.append(0)
+
+    return new_list
+
+
+
+#Model Functions
+def create_random_connectivity_matrix(number_of_ensembles):
+    connectivity_matrix = []
+    for ensemble_from in range(number_of_ensembles):
+        connectivity_matrix.append([])
+        for ensemble_to in range(number_of_ensembles):
+            connectivity_matrix[ensemble_from].append(random.uniform(weight_min,weight_max))
+
+    connectivity_matrix = np.array(connectivity_matrix)
+    np.fill_diagonal(connectivity_matrix,0)
+    return connectivity_matrix
+
+def create_random_intrinsic_activities(number_of_ensembles):
+    intrinsic_activities = []
+
+    for ensemble in range(number_of_ensembles):
+        intrinsic_activities.append(random.uniform(intrinsic_activity_min,intrinsic_activity_max))
+    return intrinsic_activities
+
+def get_ensemble_input(target_ensemble,connectivity_matrix,ensemble_states):
+    input = 0
+
+    for input_ensemble in range(number_of_ensembles):
+        if input_ensemble == target_ensemble:
+            pass
+        else:
+            input += ensemble_states[input_ensemble] * connectivity_matrix[input_ensemble][target_ensemble]
+
+    return input
+
+def simulate_matrix(connectivity_matrix,intrinsic_activities, number_of_ensembles, number_of_timepoints):
+
+    current_ensemble_values = []
+    new_ensemble_values     = []
+    ensemble_states = []
+    simulated_binary_matrix = []
+    sim_raster = []
+
+    #Set Initial Conditions:
+    for ensemble in range(number_of_ensembles):
+        current_ensemble_values.append(np.random.uniform(noise_max))
+        new_ensemble_values.append(0)
+        ensemble_states.append(random.randint(0,1))
+
+    for timepoint in range(number_of_timepoints):
+
+        #Get New Values
+        for ensemble in range(number_of_ensembles):
+            extrinsic_input = get_ensemble_input(ensemble, connectivity_matrix, ensemble_states)
+            new_ensemble_values[ensemble] = current_ensemble_values[ensemble] + extrinsic_input + intrinsic_activities[ensemble] + np.random.uniform(-noise_max,noise_max)
+
+        #Set New States
+        for ensemble in range(number_of_ensembles):
+
+            if ensemble_states[ensemble] == 1:
+                ensemble_states[ensemble] = 0
+
+            else:
+                if new_ensemble_values[ensemble] > threshold:
+                    ensemble_states[ensemble] = 1
+                    new_ensemble_values[ensemble] = 0
+
+        #Update values
+        current_ensemble_values = new_ensemble_values
+        #update_ensemble_scene(number_of_ensembles, current_ensemble_values, ensemble_states)
+        simulated_binary_matrix.append(ensemble_states[:])
+
+
+    simulated_binary_matrix = np.transpose(simulated_binary_matrix)
+
+    return simulated_binary_matrix
+
+def get_ensemble_activities(binary_matrix,number_of_ensembles):
+
+    ensemble_activities = []
+
+    for ensemble in range(number_of_ensembles):
+        activity = np.sum(binary_matrix[ensemble])
+        ensemble_activities.append(activity)
+
+    return ensemble_activities
+
+def create_correlation_matrix(raster):
+
+    ensembles, timepoints = np.shape(raster)
+    correlation_matrix = create_zero_array(ensembles)
+
+    for ensemble_1 in range(ensembles):
+        for ensemble_2 in range(ensembles):
+
+            try:
+                correlation, p = stats.pearsonr(raster[ensemble_1],raster[ensemble_2])
+                #print "correlation", correlation
+                #print raster[ensemble_1]
+                #print raster[ensemble_2]
+            except:
+                correlation = 0
+
+            if p < 1:
+                correlation_matrix[ensemble_1][ensemble_2] = correlation
+            else:
+                correlation_matrix[ensemble_1][ensemble_2] = 0
+
+    return correlation_matrix
+
+def calculate_error(target_activities, target_correlation_matrix, simulated_activities, simulated_correlation_matrix, number_of_ensembles):
+
+    activity_error = 0
+    for ensemble in range(number_of_ensembles):
+        target = target_activities[ensemble]
+        simulated = simulated_activities[ensemble]
+        error = abs(target - simulated)
+        activity_error += error
+
+    correlation_error = 0
+    for ensemble_from in range(number_of_ensembles):
+        for ensemble_to in range(number_of_ensembles):
+            target = target_correlation_matrix[ensemble_from][ensemble_to]
+            simulated = simulated_correlation_matrix[ensemble_from][ensemble_to]
+            cor_error = abs(target - simulated)
+            correlation_error += cor_error
+
+    max_correlation_error = number_of_ensembles * number_of_ensembles
+    max_activity_error = number_of_ensembles * number_of_timepoints
+
+    correlation_error = float(correlation_error) / max_correlation_error
+    activity_error = float(activity_error) / max_activity_error
+
+    total_error = correlation_error + activity_error
+
+    return total_error
+
+def get_error(simulated_binary_matrix,number_of_ensembles,target_activities,target_correlation_matrix):
+
+    simulated_activities = get_ensemble_activities(simulated_binary_matrix, number_of_ensembles)
+    simulated_correlation_matrix = create_correlation_matrix(simulated_binary_matrix)
+    error = calculate_error(target_activities, target_correlation_matrix, simulated_activities, simulated_correlation_matrix, number_of_ensembles)
+
+    return error
+
+def create_new_generation(winning_matrix, winning_activities, generation_size, mutation_chance):
+    next_generation_connectivity_matricies = []
+    next_generation_intrinsic_activities = []
+
+    for agent in range(generation_size):
+
+        #Get New Activities
+        intrinsic_activations = []
+        for ensemble in range(number_of_ensembles):
+            mutate = get_boolean_with_probability(mutation_chance)
+            if mutate == True:
+                intrinsic_activations.append(np.random.uniform(intrinsic_activity_min,intrinsic_activity_max))
+            else:
+                intrinsic_activations.append(winning_activities[ensemble])
+
+        next_generation_intrinsic_activities.append(intrinsic_activations)
+
+
+        #Get New Matrix
+        new_connectivity_matrix = create_empty_array(number_of_ensembles)
+        for ensemble_from in range(number_of_ensembles):
+            for ensemble_to in range(number_of_ensembles):
+                mutate = get_boolean_with_probability(mutation_chance)
+                if mutate == True:
+                    new_connectivity_matrix[ensemble_from][ensemble_to] = np.random.uniform(weight_min, weight_max)
+                else:
+                    new_connectivity_matrix[ensemble_from][ensemble_to] = winning_matrix[ensemble_from][ensemble_to]
+
+        next_generation_connectivity_matricies.append(new_connectivity_matrix)
+
+    return next_generation_intrinsic_activities, next_generation_connectivity_matricies
+
+
+activation_threshold = 0.99
+number_of_ensembles = 30
+weight_max = 1
+weight_min = -1
+intrinsic_activity_max = 1
+intrinsic_activity_min = 0.1
+threshold = 5
+noise_max = 0.5
+number_of_ensembles = 10
+number_of_timepoints = 17000
+number_of_generations = 200
+generation_size = 40
+
+
+# Create Target Network
+target_ground_truth_matrix = create_random_connectivity_matrix(number_of_ensembles)
+target_ground_truth_activities = create_random_intrinsic_activities(number_of_ensembles)
+target_binary_matrix = simulate_matrix(target_ground_truth_matrix, target_ground_truth_activities,
+                                           number_of_ensembles, number_of_timepoints)
+target_correlation_matrix = create_correlation_matrix(target_binary_matrix)
+target_activities = get_ensemble_activities(target_binary_matrix, number_of_ensembles)
+
+
+# Create Initial Conditions
+agent_matricies = []
+agent_activities = []
+for agent in range(generation_size):
+    agent_matricies.append(create_random_connectivity_matrix(number_of_ensembles))
+    agent_activities.append(create_random_intrinsic_activities(number_of_ensembles))
+
+
+# Simulate Each Agent
+generation_errors = []
+
+for generation in range(number_of_generations):
+    print "Generation", generation
+    errors = []
+    current_best_activities = []
+    current_best_matrix = []
+
+    for agent in range(generation_size):
+        simulated_matrix = simulate_matrix(agent_matricies[agent], agent_activities[agent], number_of_ensembles,
+                                           number_of_timepoints)
+        error = get_error(simulated_matrix, number_of_ensembles, target_activities, target_correlation_matrix)
+        errors.append(error)
+
+    lowest_error = min(errors)
+    best_agent = errors.index(lowest_error)
+    generation_errors.append(lowest_error)
+    print "lowest error", lowest_error
+    current_best_activities = agent_activities[best_agent]
+    current_best_matrix = agent_matricies[best_agent]
+
+    agent_activities, agent_matricies = create_new_generation(agent_matricies[best_agent],agent_activities[best_agent], generation_size, 0.05)
+    agent_activities[0] = current_best_activities
+    agent_matricies[0] = current_best_matrix
+
+    print "predicted activities", current_best_activities
+    print "predicted matrix", current_best_matrix
+
+    print "target activities", target_ground_truth_activities
+    print "target matrix", target_ground_truth_matrix
+
+    plt.plot(generation_errors)
+    plt.show()
+
+    plt.imshow(target_ground_truth_matrix)
+    plt.show()
+
+    plt.imshow(current_best_matrix)
+    plt.show()
+
+    sys.exit(app.exec_())
