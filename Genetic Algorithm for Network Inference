@@ -312,19 +312,20 @@ for generation in range(number_of_generations):
     agent_activities[0] = current_best_activities
     agent_matricies[0] = current_best_matrix
 
-    print "predicted activities", current_best_activities
-    print "predicted matrix", current_best_matrix
 
-    print "target activities", target_ground_truth_activities
-    print "target matrix", target_ground_truth_matrix
+print "predicted activities", current_best_activities
+print "predicted matrix", current_best_matrix
 
-    plt.plot(generation_errors)
-    plt.show()
+print "target activities", target_ground_truth_activities
+print "target matrix", target_ground_truth_matrix
 
-    plt.imshow(target_ground_truth_matrix)
-    plt.show()
+plt.plot(generation_errors)
+plt.show()
 
-    plt.imshow(current_best_matrix)
-    plt.show()
+plt.imshow(target_ground_truth_matrix)
+plt.show()
 
-    sys.exit(app.exec_())
+plt.imshow(current_best_matrix)
+plt.show()
+
+sys.exit(app.exec_())
