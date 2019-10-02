@@ -1,0 +1,193 @@
+import scipy.io as sio
+import matplotlib.pyplot as plt
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+import sys
+import numpy as np
+import random
+import networkx as nx
+import community
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib import cm
+import matplotlib.pyplot as plt
+from matplotlib.path import Path
+from matplotlib.widgets import LassoSelector
+import numpy as np
+from skimage.data import coins
+from os import listdir
+from scipy import stats
+from scipy.spatial.distance import euclidean
+from skimage import io
+from statsmodels.tsa.stattools import  grangercausalitytests
+from sklearn.cluster import SpectralClustering, AffinityPropagation, MeanShift, AgglomerativeClustering
+from sklearn.decomposition import NMF, PCA
+from sklearn import mixture
+from sklearn.manifold import TSNE
+from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
+from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.cluster import hierarchy
+from seaborn import clustermap
+
+file = "C:\Users\matth\OneDrive\Documents\Mouse data 1\\20190524_125837__VAT005_B3_AI_001.mat"
+
+contents = sio.loadmat(file)
+
+#print len(contents)
+#print contents.keys()
+
+time = contents["bhv"][0][0][3]
+speed = contents["bhv"][0][0][4]
+data = contents["bhv"][0][0][5][0][0]
+
+number_of_variables     = 7
+number_of_timepoints    = len(time)
+
+reward_on               = data[0]
+reward_off              = data[1]
+vis_1_on                = data[2]
+vis_1_off               = data[3]
+vis_2_on                = data[4]
+vis_2_off               = data[5]
+odour_1_on              = data[6]
+odour_1_off             = data[7]
+odour_2_on              = data[8]
+odour_2_off             = data[9]
+vis_1_irrelevant_on     = data[10]
+vis_1_irrelevant_off    = data[11]
+vis_2_irrelevant_on     = data[12]
+vis_2_irrelevant_off    = data[13]
+
+
+print "number of timepoints: ", len(time)
+
+def create_variable_raster(variable_onset_times, variable_offset_times):
+    data_matrix = np.zeros((1,number_of_timepoints))
+    number_of_events = len(variable_onset_times)
+
+    for event_index in range(number_of_events):
+        event_start = variable_onset_times[event_index]
+        event_stop = variable_offset_times[event_index]
+
+        start_index = np.where(time == event_start)[0]
+        stop_index  = np.where(time == event_stop)[0]
+
+        for timepoint in range(start_index, stop_index):
+            data_matrix[0][timepoint] = 1
+
+    return data_matrix[:50]
+
+
+
+def display_image(figure,canvas,image):
+    figure.clear()
+    axis = figure.add_subplot(111)
+    axis.plot(image)
+    plt.show()
+    canvas.draw()
+    canvas.update()
+    app.processEvents()
+
+def plot_data():
+
+    reward_raster           = create_variable_raster(reward_on, reward_off)
+    display_image(main.reward_figure, main.reward_canvas, reward_raster)
+
+    vis_1_raster            = create_variable_raster(vis_1_on, vis_1_off)
+    display_image(main.vis_1_figure, main.vis_1_canvas, vis_1_raster)
+
+    vis_2_raster            = create_variable_raster(vis_2_on, vis_2_off)
+    display_image(main.vis_2_figure, main.vis_2_canvas, vis_2_raster)
+
+    odour_1_raster          = create_variable_raster(odour_1_on, odour_1_off)
+    display_image(main.odour_1_figure, main.odour_1_canvas, odour_1_raster)
+
+    odour_2_raster          = create_variable_raster(odour_2_on, odour_2_off)
+    display_image(main.odour_2_figure, main.odour_2_canvas, odour_2_raster)
+
+    vis_1_relevant_raster   = create_variable_raster(vis_1_irrelevant_on, vis_1_irrelevant_off)
+    display_image(main.vis_1_relevant_figure, main.vis_1_relevant_canvas, vis_1_relevant_raster)
+
+    vis_2_relevant_raster   = create_variable_raster(vis_2_irrelevant_on, vis_2_irrelevant_off)
+    display_image(main.vis_2_relevant_figure, main.vis_2_relevant_canvas, vis_2_relevant_raster)
+
+    print "data plotted"
+    plt.plot(reward_raster)
+    plt.show()
+
+
+
+class Window(QDialog):
+
+    def __init__(self, parent=None):
+        super(Window, self).__init__(parent)
+        self.setWindowTitle("Activity Visualiser")
+        self.setGeometry(100,100,1500,700)
+
+        self.create_main_layout()
+
+    def create_main_layout(self):
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+
+        self.reward_label           = QLabel("Reward")
+        self.vis_1_label            = QLabel("Vis 1")
+        self.vis_2_label            = QLabel("Vis 2")
+        self.odour_1_label          = QLabel("Odour 1")
+        self.odour_2_label          = QLabel("Odour 2")
+        self.vis_1_relevant_label   = QLabel("Vis 1 Irrelevant")
+        self.vis_2_relevant_label   = QLabel("Vis 2 Irrelevant")
+
+        self.reward_figure          = Figure()
+        self.vis_1_figure           = Figure()
+        self.vis_2_figure           = Figure()
+        self.odour_1_figure         = Figure()
+        self.odour_2_figure         = Figure()
+        self.vis_1_relevant_figure  = Figure()
+        self.vis_2_relevant_figure  = Figure()
+
+        self.reward_canvas          = FigureCanvas(self.reward_figure)
+        self.vis_1_canvas           = FigureCanvas(self.vis_1_figure)
+        self.vis_2_canvas           = FigureCanvas(self.vis_2_figure)
+        self.odour_1_canvas         = FigureCanvas(self.odour_1_figure)
+        self.odour_2_canvas         = FigureCanvas(self.odour_2_figure)
+        self.vis_1_relevant_canvas  = FigureCanvas(self.vis_1_relevant_figure)
+        self.vis_2_relevant_canvas  = FigureCanvas(self.vis_2_relevant_figure)
+
+        self.layout.addWidget(self.reward_label,            01, 00)
+        self.layout.addWidget(self.vis_1_label,             02, 00)
+        self.layout.addWidget(self.vis_2_label,             03, 00)
+        self.layout.addWidget(self.odour_1_label,           04, 00)
+        self.layout.addWidget(self.odour_2_label,           05, 00)
+        self.layout.addWidget(self.vis_1_relevant_label,    06, 00)
+        self.layout.addWidget(self.vis_2_relevant_label,    07, 00)
+
+        self.layout.addWidget(self.reward_canvas,            01, 01)
+        self.layout.addWidget(self.vis_1_canvas,             02, 01)
+        self.layout.addWidget(self.vis_2_canvas,             03, 01)
+        self.layout.addWidget(self.odour_1_canvas,           04, 01)
+        self.layout.addWidget(self.odour_2_canvas,           05, 01)
+        self.layout.addWidget(self.vis_1_relevant_canvas,    06, 01)
+        self.layout.addWidget(self.vis_2_relevant_canvas,    07, 01)
+
+
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+
+    main = Window()
+    main.show()
+    plot_data()
+
+
+    
+
+
+
+
+    sys.exit(app.exec_())
