@@ -1,0 +1,23 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def remap_matrix(matrix):
+    original_shape = np.shape(matrix)
+    
+    flat_matrix = np.ndarray.flatten(matrix)
+    flat_matrix = list(flat_matrix)
+    
+    matrix_set = set(flat_matrix)
+    matrix_set = list(matrix_set)
+    matrix_set.sort()
+    
+    new_matrix = []
+    for item in flat_matrix:
+        new_item = matrix_set.index(item)
+        new_matrix.append(new_item)
+
+    new_matrix = np.reshape(new_matrix, original_shape)
+
+    return new_matrix
+
