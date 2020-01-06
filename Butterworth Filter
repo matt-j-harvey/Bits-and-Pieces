@@ -1,0 +1,37 @@
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import signal
+
+
+def create_noisy_sine(signal_length, sampling_frequency, signal_frequency, noise_magnitude):
+
+    signal = []
+    number_of_timepoints = signal_length * sampling_frequency
+    timestep = float(1) / sampling_frequency
+
+    for x in range(number_of_timepoints):
+        value = math.sin(x * timestep * signal_frequency * math.pi * 2)
+        noise = np.random.uniform(-noise_magnitude, noise_magnitude)
+        value += noise
+        signal.append(value)
+
+    return signal
+
+
+noise_magnitude = 0.1
+signal_length = 5           #In Seconds
+sampling_frequency = 100    #In Hertz
+signal_frequency = 5        #In Hertz
+
+
+#Butterworth Settings
+cutoff_frequency = 10                          # In Hertz
+w = cutoff_frequency / (sampling_frequency / 2) # Normalize the frequency
+b, a = signal.butter(2, w, 'low')
+
+raw_signal = create_noisy_sine(signal_length, sampling_frequency, signal_frequency, noise_magnitude)
+filtered_signal = signal.filtfilt(b, a, raw_signal)
+plt.plot(raw_signal, c='r')
+plt.plot(filtered_signal, c='b')
+plt.show()
