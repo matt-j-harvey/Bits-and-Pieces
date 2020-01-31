@@ -1,0 +1,95 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+
+
+global number_of_neurons
+global number_of_timepoints
+number_of_neurons = 100
+number_of_timepoints = 360
+firing_rate = 0.3
+
+def bool_with_probability(probability):
+    number = np.random.uniform(0, 1)
+    if number < probability:
+        return 1
+    else:
+        return 0
+
+
+def generate_neuron_locations():
+
+    neuron_locations = []
+    for neuron in range(number_of_neurons):
+        x_pos = np.random.uniform(0, 10)
+        y_pos = np.random.uniform(0, 10)
+        z_pos = np.random.uniform(0, 10)
+        neuron_locations.append([x_pos, y_pos, z_pos])
+
+    return neuron_locations
+
+
+def generate_binary_matrix():
+    binary_matrix = np.zeros((number_of_neurons,number_of_timepoints))
+
+    for neuron in range(number_of_neurons):
+        for timepoint in range(number_of_timepoints):
+            binary_matrix[neuron][timepoint] = bool_with_probability(firing_rate)
+
+    return binary_matrix
+
+
+def create_pseudo_calcium_traces(binary_raster):
+
+    #Create Calcium Kernel
+    initial_calcium_value = 5.0
+    calcium_decay_exponent = 0.9
+    length_of_calcium_kernel = 10
+
+    calcum_kernel = np.zeros(length_of_calcium_kernel, dtype=float)
+    for timepoint in range(length_of_calcium_kernel):
+        calcum_kernel[timepoint] = float(initial_calcium_value * (calcium_decay_exponent**float(timepoint)))
+
+    neurons, timepoints = np.shape(binary_raster)
+    calcium_matrix = np.zeros((neurons,timepoints))
+
+    for neuron in range(number_of_neurons):
+        for timepoint in range(number_of_timepoints):
+            if binary_raster[neuron][timepoint] == 1:
+                endpoint = min(length_of_calcium_kernel,timepoints-timepoint)
+                for timestep in range(0, endpoint):
+                    calcium_matrix[neuron][timepoint + timestep] = calcium_matrix[neuron][timepoint + timestep] + calcum_kernel[timestep]
+
+    return calcium_matrix
+
+
+
+binary_matrix = generate_binary_matrix()
+calcium_traces = create_pseudo_calcium_traces(binary_matrix)
+neuron_coordinates = generate_neuron_locations()
+
+
+
+max_calcium = np.max(calcium_traces)
+ax = plt.gca(projection="3d")
+
+for timepoint in range(number_of_timepoints):
+
+    ax.clear()
+    # Hide grid lines
+    ax.grid(False)
+
+    # Hide axes ticks
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+
+    ax.view_init(30, timepoint)
+    for neuron in range(number_of_neurons):
+        alpha_value = np.clip(0.1 + (calcium_traces[neuron][timepoint] / max_calcium), a_max=1, a_min=0)
+        ax.scatter(neuron_coordinates[neuron][0], neuron_coordinates[neuron][1], neuron_coordinates[neuron][2], c=[calcium_traces[neuron][timepoint]], cmap="Purples", vmin=0, vmax=max_calcium, alpha=alpha_value)
+
+    print(timepoint)
+    plt.draw()
+    #plt.pause(.0001)
+    plt.savefig(r"C:\Users\matth\OneDrive\Pictures\Neuron Visualiser" + "\\" + str(timepoint).zfill(4) + ".jpeg")
