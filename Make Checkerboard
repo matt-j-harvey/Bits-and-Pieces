@@ -1,0 +1,74 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def get_chunk_structure(chunk_size, array_size):
+
+    number_of_chunks = int(np.ceil(array_size / chunk_size))
+
+    remainder = array_size % chunk_size
+
+    #Get Chunk Sizes
+    chunk_sizes = []
+    if remainder == 0:
+        for x in range(number_of_chunks):
+            chunk_sizes.append(chunk_size)
+    else:
+        for x in range(number_of_chunks - 1):
+            chunk_sizes.append(chunk_size)
+        chunk_sizes.append(remainder)
+
+    #Get Chunk Starts
+    chunk_starts = []
+    chunk_start = 0
+    for chunk_index in range(number_of_chunks):
+        chunk_starts.append(chunk_size * chunk_index)
+
+    #Get Chunk Stops
+    chunk_stops = []
+    chunk_stop = 0
+    for chunk_index in range(number_of_chunks):
+        chunk_stop += chunk_sizes[chunk_index]
+        chunk_stops.append(chunk_stop)
+
+    return number_of_chunks, chunk_sizes, chunk_starts, chunk_stops
+
+
+def create_checkerboards():
+
+    height = 1080
+    width = 1920
+    square_size = 100
+
+    board_1 = np.zeros((height, width))
+
+    x_number_of_chunks, x_chunk_sizes, x_chunk_starts, x_chunk_stops = get_chunk_structure(width, square_size)
+    y_number_of_chunks, y_chunk_sizes, y_chunk_starts, y_chunk_stops = get_chunk_structure(height, square_size)
+
+    for x in range(x_number_of_chunks):
+        x_chunk_start
+        chunk_stop
+
+
+
+        start = (x + 0) * square_size
+        stop  = (x + 1) * square_size
+
+        if x % 2 == 0:
+            board_1[0:100, start:stop] = 1
+            board_2[0:100, start:stop] = 0
+
+        else:
+            board_1[0:100, start:stop] = 0
+            board_2[0:100, start:stop] = 1
+
+
+    #b = 1 - a
+
+    return [board_1, board_2]
+
+
+board_1, board_2 = create_checkerboards()
+
+plt.imshow(board_1)
+plt.show()
