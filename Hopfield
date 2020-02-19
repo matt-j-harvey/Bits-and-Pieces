@@ -1,0 +1,152 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.manifold import SpectralEmbedding
+from mpl_toolkits.mplot3d import Axes3D
+
+
+
+converge_values = []
+
+def generate_patterns(number_of_patterns, network_size):
+    patterns = []
+
+    for pattern in range(number_of_patterns):
+        node_values = np.zeros(network_size)
+        for node in range(network_size):
+                value = np.random.randint(0, 2)
+                node_values[node] = value
+        patterns.append(np.copy(node_values))
+
+    return patterns
+
+
+def learn_pattern(patterns, connectivity_matrix, network_size):
+
+    number_of_patterns = len(patterns)
+    for pattern in patterns:
+        for neuron_from in range(network_size):
+            for neuron_to in range(network_size):
+                weight = ((2*pattern[neuron_to]) - 1) * ((2*pattern[neuron_from]) - 1)
+                connectivity_matrix[neuron_from][neuron_to] += weight/ number_of_patterns
+
+
+    return connectivity_matrix
+
+
+def update_network(node_values, connectivity_matrix):
+    node_list = list(range(network_size))
+    np.random.shuffle(node_list)
+
+    simulation_states = []
+
+    converged = False
+    while converged == False:
+        changed = False
+        for node in node_list:
+            node_value = np.sum(connectivity_matrix[:, node])
+            if node_value >= 0:
+                new_value = 1
+            else:
+                new_value = 0
+
+            if new_value != node_values[node]:
+                changed = True
+            node_values[node] = new_value
+
+            simulation_states.append(np.copy(node_values))
+
+        if changed == False:
+            converged = True
+
+            for pattern in range(len(patterns)):
+                print("Node Values", list(node_values))
+                print("Pattern", patterns[pattern])
+
+                #if list(node_values) == patterns[pattern]:
+                    #converge_values.append(pattern)
+
+    simulation_states = np.array(simulation_states)
+    return simulation_states
+
+
+
+def initialise_randomly(network_size):
+
+    node_values = np.zeros(network_size)
+    for node in range(network_size):
+        value = np.random.randint(0, 2)
+        node_values[node] = value
+    return node_values
+
+
+def normalise_states(states):
+    normalised_states = []
+    for state in states:
+        total_activity = np.sum(state)
+        normalised_state = state / total_activity
+        normalised_states.append(normalised_state)
+    normalised_states = np.array(normalised_states)
+
+    return normalised_states
+
+
+network_size = 10
+node_values = np.zeros(network_size)
+connectivity_matrix = np.zeros((network_size, network_size))
+
+
+
+
+
+recorded_states = []
+colour_matrix = []
+colours = []
+
+
+patterns = generate_patterns(2, network_size)
+connectivity_matrix = learn_pattern(patterns, connectivity_matrix, network_size)
+
+
+print("Initial Node Values", node_values)
+number_of_runs = 10
+all_states = []
+runs = []
+for x in range(number_of_runs):
+    print(x)
+    node_values = initialise_randomly(network_size)
+    simulation_states = update_network(node_values, connectivity_matrix)
+    runs.append(simulation_states)
+    for state in simulation_states:
+        all_states.append(state)
+
+all_states = normalise_states(all_states)
+
+plt.imshow(all_states)
+plt.show()
+
+#pca_model = PCA(n_components=3).fit(all_states)
+points_list = PCA(n_components=4).fit_transform(all_states)
+
+
+number_of_datapoints = np.shape(all_states)[0]
+print(number_of_datapoints, "Number of datapoints")
+
+colours = []
+sizes = []
+for run in range(number_of_runs):
+    states = runs[run]
+    number_of_states = np.shape(states)[0]
+    for state in range(number_of_states):
+        colours.append(run)
+        size = float(state) / number_of_states
+        sizes.append(size * 20)
+
+print("Convergence Values", converge_values)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(points_list[:,1], points_list[:,2], points_list[:,3], c=colours, alpha=0.3, s=sizes)
+plt.show()
+
+
