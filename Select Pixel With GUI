@@ -1,0 +1,54 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import imageio
+from scipy import ndimage
+from skimage.feature import canny
+from skimage import data, color, img_as_ubyte
+from skimage.feature import canny
+from skimage.transform import hough_ellipse
+from skimage.draw import ellipse_perimeter
+import cv2
+import pyqtgraph as pg
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import Qt
+import sys
+from PIL import Image
+
+file_location = r"C:\Users\matth\OneDrive\Pictures\Allen_Brain_One_Half.png"
+
+
+class DrawImage(QWidget):
+    def __init__(self, parent=None):
+        super(QWidget, self).__init__(parent)
+
+        self.setWindowTitle('Selection Window')
+        self.image = QImage(file_location)
+
+        self.graphics_view = QGraphicsView()
+        self.graphics_scene = QGraphicsScene()
+
+        self.image_format = self.image.format()
+        self.pixMapItem = QGraphicsPixmapItem(QPixmap(self.image))
+        self.graphics_scene.addItem(self.pixMapItem)
+        self.graphics_view.setScene(self.graphics_scene)
+
+        self.pixMapItem.mousePressEvent = self.pixelSelect
+
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+        self.layout.addWidget(self.graphics_view)
+
+    def pixelSelect( self, event):
+        print('hello')
+        position = [event.pos().x(), event.pos().y()]
+        print(position)
+
+
+if __name__ == '__main__':
+
+    app = QApplication(sys.argv)
+    form = DrawImage()
+    form.show()
+    app.exec_()
+
